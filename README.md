@@ -1,6 +1,6 @@
 # Strapi CMS Deployment on AWS with Terraform
 
-This project contains the Infrastructure as Code (IaC) configuration to deploy a production-ready **Strapi Headless CMS** on AWS using **Terraform**.
+This project contains the Infrastructure as Code (IaC) configuration to deploy  **Strapi Headless CMS** on AWS using **Terraform**.
 
 The infrastructure is designed to be cost-effective and simple, utilizing a single EC2 instance with a self-hosted SQLite database, enclosed within a secure Virtual Private Cloud (VPC).
 
@@ -33,7 +33,7 @@ Before running this project, ensure you have:
 
 1.  **Terraform installed** on your local machine.
 2.  **AWS CLI configured** with valid credentials (`aws configure`).
-3.  **An AWS Key Pair** created in the `us-east-1` region (e.g., named `FirstKeyValuePair`).
+3.  **An AWS Key Pair** created in the AWS
 
 ## 🛠️ Deployment Guide
 
@@ -92,9 +92,10 @@ pm2 start npm --name "strapi" -- run start
 
 ## 🌐 Accessing the Application
 
-Your Strapi API and Admin Panel are now live!
+**Cloud-deployed version (Admin Panel):**
+`http://98.94.26.234:1337/admin`
 
-*   **Admin Panel:** `http://<EC2_PUBLIC_IP>:1337/admin`
-*   **API Endpoint:** `http://<EC2_PUBLIC_IP>:1337/api`
+*   **Username**: `demo_user` (or create your own)
+*   **Password**: `Password123`
 
-Open the Admin Panel URL in your browser to create your first Administrator account and start managing your content.
+*(The API is also available at `http://98.94.26.234:1337/api`, but requires authentication/configuration).*
