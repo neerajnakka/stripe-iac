@@ -1,101 +1,188 @@
-# Strapi CMS Deployment on AWS with Terraform
+---
 
-This project contains the Infrastructure as Code (IaC) configuration to deploy  **Strapi Headless CMS** on AWS using **Terraform**.
+## **📌 Strapi CMS Deployment on AWS using Terraform**
 
-The infrastructure is designed to be cost-effective and simple, utilizing a single EC2 instance with a self-hosted SQLite database, enclosed within a secure Virtual Private Cloud (VPC).
+This project contains the **Infrastructure as Code (IaC)** configuration to deploy a **Strapi Headless CMS** on AWS using **Terraform**.
+The infrastructure is designed to be **simple, cost-effective and production-ready**, using a single EC2 instance running Strapi with PM2 and a self-hosted SQLite database inside a secure VPC.
 
-## 🏗️ Architecture Overview
+---
 
-The Terraform configuration provisions the following AWS resources:
+## **🏗️ Architecture Overview**
 
-*   **VPC**: A custom Virtual Private Cloud in `us-east-1` with a single public subnet.
-*   **Security Groups**: A strict firewall configuration allowing:
-    *   `SSH (22)`: For server management.
-    *   `HTTP (80) / HTTPS (443)`: For web traffic.
-    *   `Strapi (1337)`: For accessing the API and Admin Panel.
-*   **EC2 Instance**: An `Ubuntu 24.04` server (t3.small) pre-configured with:
-    *   Node.js (LTS)
-    *   PM2 (Process Manager)
-    *   Build tools (gcc, make, etc.)
+Terraform provisions the following AWS resources automatically:
 
-## 📂 File Structure
+| Component            | Description                                                                    |
+| -------------------- | ------------------------------------------------------------------------------ |
+| **VPC**              | Custom Virtual Private Cloud (CIDR: `10.0.0.0/16`)                             |
+| **Public Subnet**    | Enables Strapi to be accessed from the internet                                |
+| **Internet Gateway** | Created automatically via VPC module when public subnet is enabled             |
+| **Security Group**   | Allows SSH (22), HTTP (80/443), and Strapi port (1337)                         |
+| **EC2 Instance**     | Ubuntu 24.04 (t3.small) with Node.js, npm, and PM2 pre-installed via user_data |
 
-*   `providers.tf`: Configures the AWS Provider (v6.0+) and sets the region.
-*   `vpc.tf`: Defines the network infrastructure (VPC, Subnets, Internet Gateway) using the official AWS VPC module.
-*   `security-groups.tf`: Defines the firewall rules for the application.
-*   `ec2.tf`: Provisions the compute instance and includes a `user_data` script to automate the installation of system dependencies (Node.js, PM2).
-*   `variables.tf`: Contains configurable parameters (Region, Instance Type, Key Pair Name) to make the code reusable.
-*   `outputs.tf`: Outputs critical connection information (Public IP, SSH Command) after deployment.
+This design suits **demo, learning, and low-traffic CMS environments** while keeping AWS costs minimal.
 
-## 🚀 Prerequisites
+---
 
-Before running this project, ensure you have:
+## **📂 Repository Structure**
 
-1.  **Terraform installed** on your local machine.
-2.  **AWS CLI configured** with valid credentials (`aws configure`).
-3.  **An AWS Key Pair** created in the AWS
+| File                 | Purpose                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `providers.tf`       | Configures Terraform and AWS Provider                                                |
+| `vpc.tf`             | Creates VPC, subnet, route table, and internet gateway using official AWS VPC module |
+| `security-groups.tf` | Defines firewall rules permitting 22, 80, 443 and 1337                               |
+| `ec2.tf`             | Provisions EC2 instance and installs dependencies via `user_data`                    |
+| `variables.tf`       | Stores configurable deployment parameters (region, key pair, instance type)          |
+| `outputs.tf`         | Prints Public IP and SSH command after deployment                                    |
 
-## 🛠️ Deployment Guide
+---
 
-### Step 1: Initialize Terraform
-Download the required providers and modules:
+## **🚀 Prerequisites**
+
+Before deploying:
+
+* Terraform installed
+* AWS CLI configured (`aws configure`)
+* An AWS EC2 Key Pair created in the selected region
+
+---
+
+## **🛠️ Deployment Guide**
+
+### **Step 1 — Initialize Terraform**
+
 ```bash
 terraform init
 ```
 
-### Step 2: Review and Apply
-Preview the changes and apply the configuration to your AWS account:
+### **Step 2 — Preview & Deploy**
+
 ```bash
 terraform plan
 terraform apply
 ```
-*Type `yes` when prompted.*
 
-### Step 3: Server Configuration
-Once the deployment finishes, Terraform will output your **Public IP** and **SSH Command**.
+Type `yes` when prompted.
 
-1.  **SSH into the server:**
-    ```bash
-    ssh -i "path/to/your-key.pem" ubuntu@<EC2_PUBLIC_IP>
-    ```
+### **Step 3 — SSH into the EC2 Instance**
 
-2.  **Configure Swap Space (Critical for t3.small):**
-    Strapi's build process requires significant memory. To prevent "Out of Memory" errors on a `t3.small` instance, you **must** enable swap space:
-    ```bash
-    sudo fallocate -l 2G /swapfile
-    sudo chmod 600 /swapfile
-    sudo mkswap /swapfile
-    sudo swapon /swapfile
-    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-    ```
+After apply finishes, Terraform prints the Public IP.
 
-### Step 4: Install Strapi
-Now that the server is ready, install Strapi using the Quickstart (SQLite) method:
+```bash
+ssh -i "path/to/your-key.pem" ubuntu@<EC2_PUBLIC_IP>
+```
+
+### **Step 4 — Configure Swap Space (Critical for t3.small)**
+
+Strapi uses heavy memory during the build phase. Add swap to prevent crashes:
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+---
+
+## **📦 Installing & Starting Strapi in Production**
+
+### Install Strapi
 
 ```bash
 cd ~
-npx create-strapi-app@latest my-project --quickstart
+npx create-strapi-app my-project --quickstart
 ```
 
-*   **Note:** If the build fails with a memory error, run this command instead:
-    ```bash
-    NODE_OPTIONS="--max-old-space-size=3072" npm run build
-    ```
+> If the build fails due to memory limits:
 
-### Step 5: Start the Application
-Use PM2 to keep Strapi running in the background:
+```bash
+NODE_OPTIONS="--max-old-space-size=3072" npm run build
+```
+
+### Build Strapi for Production
 
 ```bash
 cd my-project
-pm2 start npm --name "strapi" -- run start
+npm run build
 ```
 
-## 🌐 Accessing the Application
+### Start Strapi with PM2 (Production Mode)
 
-**Cloud-deployed version (Admin Panel):**
-`http://98.94.26.234:1337/admin`
+```bash
+pm2 start npm --name strapi -- run start
+pm2 save
+pm2 startup
+```
 
-*   **Username**: `demo_user` (or create your own)
-*   **Password**: `Password123`
+Strapi will now **automatically restart** on system boot.
 
-*(The API is also available at `http://98.94.26.234:1337/api`, but requires authentication/configuration).*
+---
+
+## **🌍 Accessing the Application**
+
+| Component                             | URL                                  |
+| ------------------------------------- | ------------------------------------ |
+| **Admin Panel**                       | `http://98.94.26.234:1337/admin`     |
+| **REST API**                          | `http://98.94.26.234:1337/api`       |
+| **Sample Public Collection Endpoint** | `http://98.94.26.234:1337/api/tests` |
+
+### API Example Response
+
+```json
+{
+  "data": [
+    {
+      "id": 2,
+      "title": "Neeraj  Chandra",
+      "description": "Strapi deployment using iac",
+      "publishedAt": "...",
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "meta": { ... }
+}
+```
+
+---
+
+## **🔑 Notes on Strapi Modes**
+
+| Development                  | Production                        |
+| ---------------------------- | --------------------------------- |
+| `npm run develop`            | `npm run build` + `npm run start` |
+| Hot reload enabled           | Optimized and fast                |
+| Content-Type Builder enabled | Schema locked for safety          |
+| Not for live deployments     | Recommended for EC2               |
+
+> For schema edits: temporarily run `npm run develop` → create content types → rebuild → restart PM2.
+
+---
+
+## **💡 Next Steps / Possible Enhancements**
+
+Future improvements could include:
+
+* Reverse Proxy with **Nginx**
+* **RDS PostgreSQL** instead of SQLite
+* **Autoscaling with Load Balancer**
+* **S3 Bucket + CloudFront for media storage**
+
+---
+
+## **📌 Summary**
+
+✔ Fully automated infrastructure provisioning using Terraform
+✔ Strapi CMS deployed in **production mode** on AWS EC2
+✔ PM2 ensures **automatic restarts and process monitoring**
+✔ Public REST API successfully exposed at `/api/tests`
+
+---
+
+## **📎 Author**
+
+**Neeraj Chandra Nakka**
+Cloud Deployment & Infrastructure-as-Code
+
+---
